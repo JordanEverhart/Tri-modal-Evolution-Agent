@@ -1,0 +1,23 @@
+dataset_key: omnibench
+loader: omnibench
+
+paths:
+  repo_root: /public/home/202492301216/Workplace/Qwen3omni_project/Qwen3omni/bench/OmniBench
+  dataset_file: /public/home/202492301216/Workplace/Qwen3omni_project/Qwen3omni/bench/OmniBench/dataset/batch-5_1142_20240817.jsonl
+  mm_root: /public/home/202492301216/Workplace/Qwen3omni_project/Qwen3omni/bench/OmniBench/mm_data
+
+prompts:
+  system_prompt: |
+    You answer image-audio multiple-choice questions and must use all provided modalities.
+  modality_hint: both the image and the audio clip
+  response_suffix: Reply with only the single letter of the best answer.
+
+generation_overrides:
+  max_new_tokens: 64
+  use_audio_in_video: false
+  do_sample: false
+  temperature: 0.0
+
+group_fields:
+  - task_type
+  - audio_type

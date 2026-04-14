@@ -1,0 +1,35 @@
+dataset_key: worldsense
+loader: worldsense
+
+paths:
+  dataset_root: /public/home/202492301216/Workplace/Qwen3omni_project/Qwen3omni/bench/WorldSense
+  qa_file: /public/home/202492301216/Workplace/Qwen3omni_project/Qwen3omni/bench/WorldSense/worldsense_qa.json
+
+media:
+  video_fps: 0.5
+
+prompts:
+  system_prompt: |
+    Carefully watch this video and pay attention to every detail.
+    Based on your observations, select the best option that accurately addresses the question.
+  media_prompt: |
+    These are the frames of a video and the corresponding audio.
+    Select the best answer to the following multiple-choice question based on the video.
+    Respond with only the letter (A, B, C, or D) of the correct option.
+  modality_hint: both the visuals and audio in the video
+  response_suffix: Reply with only the single letter of the best answer.
+
+generation_overrides:
+  max_new_tokens: 16384
+  use_audio_in_video: true
+  do_sample: true
+  temperature: 0.6
+  top_p: 0.95
+  top_k: 20
+
+group_fields:
+  - domain
+  - sub_category
+  - task_domain
+  - task_type
+  - duration_bucket

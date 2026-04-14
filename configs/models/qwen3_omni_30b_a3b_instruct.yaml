@@ -1,0 +1,20 @@
+model:
+  key: qwen3_omni_30b_instruct
+  family: qwen3_omni
+  path: /public/home/202492301216/Workplace/Qwen3omni_project/Qwen3omni/models/Qwen3-Omni-30B-A3B-Instruct
+
+server:
+  host: 0.0.0.0
+  port: 18080
+  base_url: http://127.0.0.1:18080
+  flash_attn2: false
+  disable_talker: false
+  device_map: auto
+
+generation_defaults:
+  max_new_tokens: 64
+  use_audio_in_video: true
+  do_sample: false
+  temperature: 0.0
+  top_p: 1.0
+  top_k: 20

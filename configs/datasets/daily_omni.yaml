@@ -1,0 +1,24 @@
+dataset_key: daily_omni
+loader: daily_omni
+
+paths:
+  dataset_root: /public/home/202492301216/Workplace/Qwen3omni_project/Bench/Daily-Omni
+  qa_file: /public/home/202492301216/Workplace/Qwen3omni_project/Bench/Daily-Omni/qa.json
+
+prompts:
+  system_prompt: |
+    You answer audio-visual video multiple-choice questions and must use both the soundtrack and the visuals.
+  modality_hint: both the visuals and audio in the video
+  response_suffix: Reply with only the single letter of the best answer.
+
+generation_overrides:
+  max_new_tokens: 64
+  use_audio_in_video: false
+  do_sample: false
+  temperature: 0.0
+
+group_fields:
+  - task_type
+  - content_parent_category
+  - content_fine_category
+  - video_category

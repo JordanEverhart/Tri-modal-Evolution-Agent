@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tri-modal-evolution-agent"
+version = "0.1.0"
+description = "Config-driven Qwen3-Omni benchmark inference toolkit."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.110.0",
+  "PyYAML>=6.0.1",
+  "requests>=2.31.0",
+  "uvicorn>=0.29.0",
+]
+
+[project.scripts]
+tri-agent = "tri_modal_evolution_agent.__main__:main"
+tri-agent-eval = "tri_modal_evolution_agent.cli.eval:main"
+tri-agent-run-suite = "tri_modal_evolution_agent.cli.run_suite:main"
+tri-agent-serve = "tri_modal_evolution_agent.cli.serve:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
