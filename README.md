@@ -148,11 +148,4 @@ outputs/<dataset_key>/<run_name>/
 - `summary.json`
 - `errors.jsonl`
 
-## GitHub
 
-仓库目标远端：
-
-- `git@github.com:JordanEverhart/Tri-modal-Evolution-Agent.git`
-- `https://github.com/JordanEverhart/Tri-modal-Evolution-Agent.git`
-
-如果当前机器已经配置好 GitHub SSH 权限，我会直接完成初始化并推送。
