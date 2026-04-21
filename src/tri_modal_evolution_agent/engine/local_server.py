@@ -23,6 +23,78 @@ class Qwen3OmniRunner:
         self.model_config = model_config
         self.runner = self._build_runner()
 
+    @staticmethod
+    def _resolve_dtype(raw_dtype: Any, torch: Any) -> Any:
+        if raw_dtype in (None, "", "auto"):
+            return "auto"
+        if isinstance(raw_dtype, str):
+            normalized = raw_dtype.strip().lower()
+            mapping = {
+                "fp16": torch.float16,
+                "float16": torch.float16,
+                "half": torch.float16,
+                "bf16": torch.bfloat16,
+                "bfloat16": torch.bfloat16,
+                "fp32": torch.float32,
+                "float32": torch.float32,
+            }
+            if normalized in mapping:
+                return mapping[normalized]
+        return raw_dtype
+
+    @staticmethod
+    def _resolve_device_map(raw_device_map: Any, server_cfg: dict, torch: Any) -> Any:
+        if raw_device_map in (None, "", "auto"):
+            return "auto"
+        if isinstance(raw_device_map, str):
+            normalized = raw_device_map.strip().lower()
+            if normalized in {"single_gpu", "single-gpu", "single"}:
+                if not torch.cuda.is_available():
+                    raise RuntimeError("single_gpu device_map requires a visible CUDA device.")
+                cuda_index = int(server_cfg.get("cuda_device", 0))
+                return {"": f"cuda:{cuda_index}"}
+            if normalized.startswith("cuda:"):
+                return {"": normalized}
+        return raw_device_map
+
+    @staticmethod
+    def _resolve_execution_device(model: Any, torch: Any) -> Any:
+        hf_device_map = getattr(model, "hf_device_map", None)
+        if isinstance(hf_device_map, dict):
+            for target in hf_device_map.values():
+                if isinstance(target, int):
+                    return torch.device(f"cuda:{target}")
+                if isinstance(target, str):
+                    if target in {"cpu", "disk", "meta"}:
+                        continue
+                    return torch.device(target)
+                if isinstance(target, torch.device):
+                    if target.type not in {"cpu", "meta"}:
+                        return target
+
+        model_device = getattr(model, "device", None)
+        if isinstance(model_device, torch.device) and model_device.type not in {"cpu", "meta"}:
+            return model_device
+
+        for parameter in model.parameters():
+            if parameter.device.type not in {"cpu", "meta"}:
+                return parameter.device
+            if parameter.device.type == "cpu":
+                return parameter.device
+
+        if torch.cuda.is_available():
+            return torch.device("cuda:0")
+        return torch.device("cpu")
+
+    @staticmethod
+    def _resolve_model_dtype(model: Any, torch: Any) -> Any:
+        for parameter in model.parameters():
+            if parameter.device.type != "meta":
+                return parameter.dtype
+        if torch.cuda.is_available():
+            return torch.bfloat16
+        return torch.float32
+
     def _build_runner(self) -> Any:
         try:
             import torch
@@ -35,9 +107,12 @@ class Qwen3OmniRunner:
 
         model_path = self.model_config["model"]["path"]
         server_cfg = self.model_config.get("server", {})
+        resolved_dtype = self._resolve_dtype(server_cfg.get("dtype", "auto"), torch)
+        resolved_device_map = self._resolve_device_map(server_cfg.get("device_map", "auto"), server_cfg, torch)
         kwargs: dict[str, Any] = {
-            "torch_dtype": "auto",
-            "device_map": server_cfg.get("device_map", "auto"),
+            "dtype": resolved_dtype,
+            "device_map": resolved_device_map,
+            "low_cpu_mem_usage": True,
         }
         if server_cfg.get("flash_attn2", False):
             kwargs["attn_implementation"] = "flash_attention_2"
@@ -47,12 +122,25 @@ class Qwen3OmniRunner:
             model.disable_talker()
         model.eval()
         processor = Qwen3OmniMoeProcessor.from_pretrained(model_path)
+        execution_device = self._resolve_execution_device(model, torch)
+        model_dtype = self._resolve_model_dtype(model, torch)
+        device_map_targets = sorted({str(target) for target in getattr(model, "hf_device_map", {}).values()})
+        print(
+            "[serve] "
+            f"resolved_device_map={resolved_device_map} "
+            f"execution_device={execution_device} "
+            f"model_dtype={model_dtype} "
+            f"hf_device_map_targets={device_map_targets}",
+            flush=True,
+        )
 
         return {
             "torch": torch,
             "process_mm_info": process_mm_info,
             "model": model,
             "processor": processor,
+            "execution_device": execution_device,
+            "model_dtype": model_dtype,
         }
 
     def generate_text(self, messages: list[dict[str, Any]], generation: dict[str, Any]) -> str:
@@ -60,6 +148,8 @@ class Qwen3OmniRunner:
         process_mm_info = self.runner["process_mm_info"]
         model = self.runner["model"]
         processor = self.runner["processor"]
+        execution_device = self.runner["execution_device"]
+        model_dtype = self.runner["model_dtype"]
 
         use_audio_in_video = bool(generation.get("use_audio_in_video", True))
         max_new_tokens = int(generation.get("max_new_tokens", 64))
@@ -80,17 +170,15 @@ class Qwen3OmniRunner:
             use_audio_in_video=use_audio_in_video,
         )
 
-        device = next(model.parameters()).device
-        dtype = next(model.parameters()).dtype
         for key, value in list(inputs.items()):
             if not isinstance(value, torch.Tensor):
                 continue
             if key == "input_ids":
-                inputs[key] = value.to(device=device, dtype=torch.int64)
+                inputs[key] = value.to(device=execution_device, dtype=torch.int64)
             elif torch.is_floating_point(value):
-                inputs[key] = value.to(device=device, dtype=dtype)
+                inputs[key] = value.to(device=execution_device, dtype=model_dtype)
             else:
-                inputs[key] = value.to(device=device)
+                inputs[key] = value.to(device=execution_device)
 
         with torch.inference_mode():
             generated = model.generate(

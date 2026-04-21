@@ -8,8 +8,9 @@ server:
   port: 18080
   base_url: http://127.0.0.1:18080
   flash_attn2: false
-  disable_talker: false
-  device_map: auto
+  disable_talker: true
+  device_map: single_gpu
+  dtype: bfloat16
 
 generation_defaults:
   max_new_tokens: 64
