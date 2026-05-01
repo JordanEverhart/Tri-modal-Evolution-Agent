@@ -1,0 +1,5 @@
+name: default_benchmarks
+jobs:
+  - dataset_config: ${REPO_ROOT}/configs/datasets/worldsense.yaml
+  - dataset_config: ${REPO_ROOT}/configs/datasets/daily_omni.yaml
+  - dataset_config: ${REPO_ROOT}/configs/datasets/omnibench.yaml

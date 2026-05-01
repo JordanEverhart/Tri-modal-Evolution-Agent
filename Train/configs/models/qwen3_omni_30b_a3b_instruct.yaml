@@ -1,0 +1,19 @@
+model:
+  key: qwen3_omni_30b_a3b_instruct
+  official_model_id: Qwen/Qwen3-Omni-30B-A3B-Instruct
+  path: /public/home/202492301216/Workplace/Qwen3omni_project/Qwen3omni/models/Qwen3-Omni-30B-A3B-Instruct
+  model_type: qwen3_omni_moe
+  torch_dtype: bfloat16
+
+thinker_only:
+  enable_audio_output: false
+  use_audio_in_video: false
+  freeze_llm: false
+  freeze_vit: true
+  freeze_aligner: true
+
+lora:
+  tuner_type: lora
+  target_modules: all-linear
+  lora_rank: 64
+  lora_alpha: 128

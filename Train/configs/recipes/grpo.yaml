@@ -1,0 +1,50 @@
+method: grpo
+entrypoint: rlhf
+rlhf_type: grpo
+run_name: qwen3omni_grpo
+env_config: ${TRAIN_ROOT}/configs/env/default.yaml
+model_config: ${TRAIN_ROOT}/configs/models/qwen3_omni_30b_a3b_instruct.yaml
+dataset_config: ${TRAIN_ROOT}/configs/datasets/datasets.yaml
+dataset_stage: grpo
+output_dir: ${TRAIN_ROOT}/outputs/grpo/${RUN_NAME}
+
+reward:
+  external_plugins:
+    - ${TRAIN_ROOT}/src/qwen3omni_train/rewards/choice_reward.py
+  reward_funcs:
+    - qwen3omni_choice_accuracy
+    - format
+  reward_weights:
+    - 1.0
+    - 0.2
+
+swift_args:
+  load_from_cache_file: true
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  learning_rate: 1e-5
+  gradient_accumulation_steps: 2
+  max_length: 8192
+  max_completion_length: 2048
+  num_generations: 8
+  temperature: 1.0
+  top_p: 0.99
+  top_k: 50
+  beta: 0.001
+  epsilon: 0.2
+  epsilon_high: 0.28
+  steps_per_generation: 4
+  importance_sampling_level: token
+  loss_type: grpo
+  advantage_estimator: grpo
+  log_completions: true
+  save_steps: 100
+  save_total_limit: 3
+  logging_steps: 5
+  warmup_ratio: 0.05
+  dataset_num_proc: 8
+  dataloader_num_workers: 8
+  attn_impl: sdpa
+  experts_impl: grouped_mm
+  deepspeed: zero2

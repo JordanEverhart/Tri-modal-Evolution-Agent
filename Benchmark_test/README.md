@@ -1,4 +1,4 @@
-# Tri-modal-Evolution-Agent
+# Benchmark_test
 
 一个从零整理的、纯净的 `Qwen3-Omni-30B-A3B-Instruct` 推理工程。
 
@@ -12,7 +12,7 @@
 ## 目录结构
 
 ```text
-Tri-modal-Evolution-Agent/
+Benchmark_test/
 ├── configs/
 │   ├── datasets/
 │   ├── models/
@@ -41,7 +41,7 @@ Tri-modal-Evolution-Agent/
 安装示例：
 
 ```bash
-cd /public/home/202492301216/Workplace/Tri-modal-Evolution-Agent
+cd /public/home/202492301216/Workplace/Tri-modal-Evolution-Agent/Benchmark_test
 /public/home/202492301216/Workplace/miniconda3/envs/qwen3omni/bin/pip install -e .
 ```
 
@@ -129,7 +129,7 @@ tri-agent run-suite \
 
 未来接新数据集时，建议按下面两步做：
 
-1. 在 [`src/tri_modal_evolution_agent/datasets/registry.py`](/public/home/202492301216/Workplace/Tri-modal-Evolution-Agent/src/tri_modal_evolution_agent/datasets/registry.py) 注册一个新的 loader
+1. 在 [`src/tri_modal_evolution_agent/datasets/registry.py`](/public/home/202492301216/Workplace/Tri-modal-Evolution-Agent/Benchmark_test/src/tri_modal_evolution_agent/datasets/registry.py) 注册一个新的 loader
 2. 新建一份 `configs/datasets/<new_dataset>.yaml`
 
 如果新数据集格式和现有某个 loader 足够接近，也可以直接复用已有 loader，只改 YAML。
@@ -147,5 +147,3 @@ outputs/<dataset_key>/<run_name>/
 - `results.jsonl`
 - `summary.json`
 - `errors.jsonl`
-
-

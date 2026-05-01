@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+import traceback
 from pathlib import Path
 from typing import Iterable
 
@@ -24,6 +25,26 @@ def _result_row(sample: BenchmarkSample, *, model_key: str, response_text: str, 
         "raw_response": response_text,
         "parsed_response": parsed_response,
         "is_correct": parsed_response == sample.correct_answer,
+        "media_paths": sample.media_paths,
+    }
+    row.update(sample.metadata)
+    return row
+
+
+def _error_row(sample: BenchmarkSample, *, model_key: str, error_message: str) -> dict:
+    index2ans = build_index_to_answer(sample.options)
+    row = {
+        "sample_id": sample.sample_id,
+        "dataset_key": sample.dataset_key,
+        "model_key": model_key,
+        "question": sample.question,
+        "options": sample.options,
+        "correct_answer": sample.correct_answer,
+        "correct_answer_text": index2ans.get(sample.correct_answer),
+        "raw_response": "",
+        "parsed_response": "N/A",
+        "is_correct": False,
+        "error": error_message,
         "media_paths": sample.media_paths,
     }
     row.update(sample.metadata)
@@ -53,15 +74,23 @@ def evaluate_samples(
             if sample.sample_id in done_sample_ids:
                 continue
             processed += 1
-            payload = client.generate(messages=sample.messages, generation=sample.generation)
-            response_text = str(payload.get("text", "")).strip()
-            parsed_response = parse_choice_response(response_text, sample.options)
-            row = _result_row(
-                sample,
-                model_key=model_key,
-                response_text=response_text,
-                parsed_response=parsed_response,
-            )
+            try:
+                payload = client.generate(messages=sample.messages, generation=sample.generation)
+                response_text = str(payload.get("text", "")).strip()
+                parsed_response = parse_choice_response(response_text, sample.options)
+                row = _result_row(
+                    sample,
+                    model_key=model_key,
+                    response_text=response_text,
+                    parsed_response=parsed_response,
+                )
+            except RuntimeError as exc:
+                traceback.print_exc()
+                row = _error_row(
+                    sample,
+                    model_key=model_key,
+                    error_message=str(exc),
+                )
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
             handle.flush()
             if processed == 1 or processed % 25 == 0:

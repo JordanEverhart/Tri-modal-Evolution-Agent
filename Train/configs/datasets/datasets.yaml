@@ -1,0 +1,43 @@
+datasets:
+  sft:
+    train:
+      - key: local_sft_train
+        enabled: true
+        path: ${TRAIN_ROOT}/data/sft/train.jsonl
+    val:
+      - key: local_sft_val
+        enabled: false
+        path: ${TRAIN_ROOT}/data/sft/val.jsonl
+
+  grpo:
+    train:
+      - key: local_grpo_train
+        enabled: true
+        path: ${TRAIN_ROOT}/data/grpo/train.jsonl
+    val: []
+
+  gspo:
+    train:
+      - key: local_gspo_train
+        enabled: true
+        path: ${TRAIN_ROOT}/data/gspo/train.jsonl
+    val: []
+
+conversion_jobs:
+  sft:
+    converter: sft
+    input: ${TRAIN_ROOT}/manifests/sft_manifest.jsonl
+    output: ${TRAIN_ROOT}/data/sft/train.jsonl
+    default_system: You are a helpful audio-visual reasoning assistant.
+
+  grpo:
+    converter: grpo
+    input: ${TRAIN_ROOT}/manifests/grpo_manifest.jsonl
+    output: ${TRAIN_ROOT}/data/grpo/train.jsonl
+    default_system: You are a helpful audio-visual reasoning assistant. Answer with a concise final answer.
+
+  gspo:
+    converter: gspo
+    input: ${TRAIN_ROOT}/manifests/gspo_manifest.jsonl
+    output: ${TRAIN_ROOT}/data/gspo/train.jsonl
+    default_system: You are a helpful audio-visual reasoning assistant. Answer with a concise final answer.

@@ -1,5 +1,0 @@
-name: default_benchmarks
-jobs:
-  - dataset_config: /public/home/202492301216/Workplace/Tri-modal-Evolution-Agent/configs/datasets/worldsense.yaml
-  - dataset_config: /public/home/202492301216/Workplace/Tri-modal-Evolution-Agent/configs/datasets/daily_omni.yaml
-  - dataset_config: /public/home/202492301216/Workplace/Tri-modal-Evolution-Agent/configs/datasets/omnibench.yaml

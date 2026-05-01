@@ -1,0 +1,17 @@
+env:
+  CONDA_ROOT: /public/home/202492301216/Workplace/miniconda3
+  CONDA_ENV: qwen3omni
+  MS_SWIFT_ROOT: /public/home/202492301216/Workplace/ms-swift
+  PYTHONPATH: /public/home/202492301216/Workplace/ms-swift
+  PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  TOKENIZERS_PARALLELISM: "false"
+  ENABLE_AUDIO_OUTPUT: "False"
+  USE_AUDIO_IN_VIDEO: "False"
+  MAX_PIXELS: "1003520"
+  VIDEO_MAX_PIXELS: "50176"
+  FPS_MAX_FRAMES: "12"
+
+runtime:
+  swift_bin: /public/home/202492301216/Workplace/miniconda3/envs/qwen3omni/bin/swift
+  cuda_visible_devices: "0,1,2,3,4,5,6,7"
+  nproc_per_node: 8
