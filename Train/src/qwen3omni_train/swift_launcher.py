@@ -62,7 +62,11 @@ def build_launch_spec(recipe_path: str | Path) -> LaunchSpec:
     lora = model_config.get("lora", {})
     stage = str(recipe["dataset_stage"])
 
-    env = {key: _stringify(value) for key, value in env_config.get("env", {}).items()}
+    env = {
+        key: _stringify(value)
+        for key, value in env_config.get("env", {}).items()
+        if value not in (None, "")
+    }
     runtime = env_config.get("runtime", {})
     env["CUDA_VISIBLE_DEVICES"] = _stringify(runtime.get("cuda_visible_devices", os.environ.get("CUDA_VISIBLE_DEVICES", "0")))
     env["NPROC_PER_NODE"] = _stringify(runtime.get("nproc_per_node", os.environ.get("NPROC_PER_NODE", "1")))

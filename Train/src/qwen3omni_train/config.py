@@ -36,6 +36,10 @@ def expand_value(value: Any, extra: dict[str, Any] | None = None) -> Any:
 
     def replace(match: re.Match[str]) -> str:
         key = match.group(1)
+        if ":-" in key:
+            key, default = key.split(":-", 1)
+            current = ctx.get(key)
+            return current if current not in (None, "") else default
         return ctx.get(key, match.group(0))
 
     return _TEMPLATE_RE.sub(replace, value)

@@ -46,5 +46,4 @@ swift_args:
   dataset_num_proc: 8
   dataloader_num_workers: 8
   attn_impl: sdpa
-  experts_impl: grouped_mm
   deepspeed: zero3

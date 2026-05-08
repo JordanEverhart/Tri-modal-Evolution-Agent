@@ -1,31 +1,37 @@
 # Qwen3-Omni ms-swift Training
 
-这个目录只放训练接入层，不放大数据、不放模型权重、不放 checkpoint。它面向 `ms-swift`，用于把本地 `Qwen3-Omni-30B-A3B-Instruct` 做成三段式训练接口：
+This directory is the reusable training layer for Qwen3-Omni experiments with
+`ms-swift`. It intentionally keeps datasets, model weights, checkpoints, logs,
+API keys, and machine-specific paths out of Git.
 
-- Stage 1: LoRA SFT
-- Stage 2A: GRPO
-- Stage 2B: GSPO
+Supported stages:
 
-## 官方约束
+- LoRA SFT through `swift sft`
+- GRPO through `swift rlhf --rlhf_type grpo`
+- GSPO through `swift rlhf --rlhf_type grpo --importance_sampling_level sequence`
+- Megatron GRPO smoke/full launches for Qwen3-Omni with a MIMO API judge reward
 
-本框架按 `ms-swift` 官方说明实现：
+## Official Alignment
 
-- 自定义数据集推荐直接传 `--dataset <dataset_path>`；标准格式使用 `messages`，多模态资源使用 `images`、`videos`、`audios` 字段。
-- PPO/GRPO 数据只需要模型输入；奖励函数需要的额外字段，例如 `solution`，会原样传给 ORM。
-- `Qwen/Qwen3-Omni-30B-A3B-Instruct` 的 `model_type` 是 `qwen3_omni_moe`。
-- `qwen3_omni` 建议设置 `ENABLE_AUDIO_OUTPUT=False`；官方说明中这会只创建并微调 `thinker`，降低显存。
-- 多模态 LoRA 中 `freeze_vit=true`、`freeze_aligner=true` 会避免给视觉/音频塔和 projector 添加 LoRA；`target_modules=all-linear` 默认作用在 LLM 侧。
-- GSPO 在 `ms-swift` 中仍走 `swift rlhf --rlhf_type grpo`，通过 `--importance_sampling_level sequence` 切换。
+The package follows the `ms-swift` conventions used for Qwen3-Omni:
 
-参考：
+- Custom datasets are passed with `--dataset <jsonl_path>`.
+- Multimodal examples use `messages` plus `images`, `videos`, and `audios` fields.
+- RLHF/GRPO examples keep reward-side columns such as `solution`, `answer`, and `meta`; `ms-swift` forwards them to the ORM reward.
+- `Qwen/Qwen3-Omni-30B-A3B-Instruct` uses `model_type: qwen3_omni_moe`.
+- `ENABLE_AUDIO_OUTPUT=False` keeps training on the thinker side.
+- `freeze_vit=true` and `freeze_aligner=true` avoid adapting the vision/audio towers and projector for LoRA runs.
+- GSPO is represented as GRPO with sequence-level importance sampling.
 
-- `ms-swift` repo: https://github.com/modelscope/ms-swift
-- Custom dataset: https://github.com/modelscope/ms-swift/blob/main/docs/source_en/Customization/Custom-dataset.md
-- RLHF/GRPO: https://github.com/modelscope/ms-swift/blob/main/docs/source_en/Instruction/RLHF.md
-- Qwen3-Omni supported model: https://github.com/modelscope/ms-swift/blob/main/docs/source_en/Instruction/Supported-models-and-datasets.md
-- GSPO: https://github.com/modelscope/ms-swift/blob/main/docs/source_en/Instruction/GRPO/AdvancedResearch/GSPO.md
+Useful upstream references:
 
-## 目录
+- `ms-swift`: https://github.com/modelscope/ms-swift
+- Custom dataset docs: https://github.com/modelscope/ms-swift/blob/main/docs/source_en/Customization/Custom-dataset.md
+- RLHF/GRPO docs: https://github.com/modelscope/ms-swift/blob/main/docs/source_en/Instruction/RLHF.md
+- Supported models: https://github.com/modelscope/ms-swift/blob/main/docs/source_en/Instruction/Supported-models-and-datasets.md
+- GSPO docs: https://github.com/modelscope/ms-swift/blob/main/docs/source_en/Instruction/GRPO/AdvancedResearch/GSPO.md
+
+## Layout
 
 ```text
 Train/
@@ -33,38 +39,104 @@ Train/
 │   ├── datasets/datasets.yaml
 │   ├── env/default.yaml
 │   ├── models/qwen3_omni_30b_a3b_instruct.yaml
-│   └── recipes/
-│       ├── lora_sft.yaml
-│       ├── grpo.yaml
-│       └── gspo.yaml
+│   ├── recipes/
+│   └── rewards/mimo_judge.example.yaml
 ├── examples/jsonl/
+├── manifests/
 ├── schemas/
 ├── scripts/
 └── src/qwen3omni_train/
 ```
 
-## 快速使用
+## Setup
 
-先安装这个轻量包：
+Install the lightweight training package inside the environment that already has
+`ms-swift`, PyTorch, Megatron, and Qwen3-Omni dependencies:
 
 ```bash
-cd /public/home/202492301216/Workplace/Tri-modal-Evolution-Agent/Train
-/public/home/202492301216/Workplace/miniconda3/envs/qwen3omni/bin/pip install -e .
+cd /path/to/Tri-modal-Evolution-Agent/Train
+pip install -e .
 ```
 
-修改本地模型路径：
+Set local paths in your shell, scheduler script, or an untracked `.env` file:
+
+```bash
+export CONDA_ROOT=/path/to/miniconda3
+export CONDA_ENV=qwen3omni
+export MS_SWIFT_ROOT=/path/to/ms-swift
+export VLLM_ROOT=/path/to/vllm_qwen3_omni
+export QWEN3OMNI_MODEL_PATH=/path/to/Qwen3-Omni-30B-A3B-Instruct
+export CUDA_HOME=/path/to/cuda
+```
+
+For MIMO reward training, keep the real API key out of Git:
+
+```bash
+export XIAOMI_MIMO_API_KEY=...
+export QWEN3OMNI_MIMO_CONFIG=configs/rewards/mimo_judge.example.yaml
+```
+
+If the compute node needs a proxy for the MIMO API:
+
+```bash
+export PROXY_URL=http://admin:10808
+```
+
+## Dataset Format
+
+SFT JSONL:
+
+```json
+{"messages":[{"role":"system","content":"You are a helpful audio-visual reasoning assistant."},{"role":"user","content":"<image><audio>Question...\nA. ...\nB. ..."},{"role":"assistant","content":"A","loss":true}],"images":["/abs/path/image.jpg"],"audios":["/abs/path/audio.wav"],"meta":{"answer_text":"..."}}
+```
+
+GRPO/GSPO JSONL:
+
+```json
+{"messages":[{"role":"system","content":"You are a helpful audio-visual reasoning assistant."},{"role":"user","content":"<image><audio>Question...\nA. ...\nB. ..."}],"images":["/abs/path/image.jpg"],"audios":["/abs/path/audio.wav"],"solution":"A","answer":"A","meta":{"answer_text":"..."}}
+```
+
+The default config expects:
 
 ```text
-configs/models/qwen3_omni_30b_a3b_instruct.yaml
+data/sft/train.jsonl
+data/grpo/train.jsonl
+data/gspo/train.jsonl
 ```
 
-修改训练数据路径：
+These `data/` files are ignored by Git.
 
-```text
-configs/datasets/datasets.yaml
+## OmniBench Preparation
+
+Prepare a stratified SFT split from OmniBench:
+
+```bash
+export OMNIBENCH_ROOT=/path/to/OmniBench
+python scripts/prepare_omnibench_sft.py \
+  --fraction 0.5 \
+  --output data/sft/train.jsonl
 ```
 
-只打印命令，不启动训练：
+Convert answer-supervised records to GRPO prompt records:
+
+```bash
+python scripts/prepare_omnibench_grpo.py \
+  --input data/sft/train.jsonl \
+  --output data/grpo/train.jsonl
+```
+
+For a tiny GRPO smoke dataset:
+
+```bash
+python scripts/prepare_omnibench_grpo.py \
+  --input data/sft/train.jsonl \
+  --output data/grpo/train.jsonl \
+  --limit 16
+```
+
+## CLI Dry Runs
+
+The package CLI prints the exact `swift` command without launching training:
 
 ```bash
 q3o-train launch --recipe configs/recipes/lora_sft.yaml --dry-run
@@ -72,70 +144,86 @@ q3o-train launch --recipe configs/recipes/grpo.yaml --dry-run
 q3o-train launch --recipe configs/recipes/gspo.yaml --dry-run
 ```
 
-真正执行训练需要在 GPU 计算节点上显式加 `--execute`：
+Launch only from a GPU compute node:
 
 ```bash
 q3o-train launch --recipe configs/recipes/lora_sft.yaml --execute
 ```
 
-当前环境是 SSH 登录节点时，不要直接跑训练。先申请 GPU 资源，例如：
+## Megatron GRPO With MIMO Reward
+
+This is the path validated for Qwen3-Omni LoRA+GRPO with colocated vLLM and a
+MIMO API judge reward. Run it on an 8-GPU node:
 
 ```bash
-salloc -p gpuA800 --gres=gpu:1 --cpus-per-task=8 -w <主机号>
+export CONDA_ROOT=/path/to/miniconda3
+export CONDA_ENV=qwen3omni
+export MS_SWIFT_ROOT=/path/to/ms-swift
+export VLLM_ROOT=/path/to/vllm_qwen3_omni
+export MODEL_DIR="$QWEN3OMNI_MODEL_PATH"
+export DATASET=/path/to/grpo_train.jsonl
+export XIAOMI_MIMO_API_KEY=...
+export QWEN3OMNI_MIMO_CONFIG=configs/rewards/mimo_judge.example.yaml
+export PROXY_URL=http://admin:10808
+
+bash scripts/run_megatron_grpo_mimo_8gpu.sh
 ```
 
-## 数据转换
-
-输入 manifest 可以是 JSONL。字段足够简单时，converter 会转成 `ms-swift` 标准格式。
-真实 manifest 默认不进 Git；仓库只保留 `manifests/*.example.jsonl`。
-首次试跑 converter 可以先复制示例：
+Or submit with Slurm:
 
 ```bash
-mkdir -p manifests
-cp manifests/sft_manifest.example.jsonl manifests/sft_manifest.jsonl
-cp manifests/grpo_manifest.example.jsonl manifests/grpo_manifest.jsonl
-cp manifests/gspo_manifest.example.jsonl manifests/gspo_manifest.jsonl
+sbatch scripts/sbatch_megatron_grpo_mimo_8gpu.sh
 ```
 
-SFT：
+Important knobs are exposed as environment variables:
 
 ```bash
-q3o-train convert --datasets configs/datasets/datasets.yaml --job sft
+export TRAIN_ITERS=100
+export GLOBAL_BATCH_SIZE=8
+export NUM_GENERATIONS=2
+export VLLM_GPU_MEMORY_UTILIZATION=0.55
+export VLLM_MAX_MODEL_LEN=1024
+export MAX_LENGTH=768
+export MAX_COMPLETION_LENGTH=4
+export OUTPUT_DIR=outputs/megatron_grpo/my_run
 ```
 
-GRPO：
+The script keeps the verified Qwen3-Omni runtime settings:
+
+- `ENABLE_AUDIO_OUTPUT=0`
+- `VLLM_USE_V1=0`
+- `VLLM_QWEN3_FORCE_TORCH_ITERATIVE_MOE=1`
+- vLLM compilation disabled through `vllm_engine_kwargs`
+- tensor parallel size 2 and expert parallel size 4 on 8 GPUs
+- `SWIFT_MEGATRON_FORCE_OS_EXIT_AFTER_MAIN=1`
+
+## Reward Plugins
+
+Available reward plugins:
+
+- `qwen3omni_choice_accuracy`: exact multiple-choice letter reward.
+- `qwen3omni_mimo_judge`: binary MIMO API judge reward with exact-match fallback.
+
+The MIMO reward accepts config from `QWEN3OMNI_MIMO_CONFIG` or directly from
+environment variables. It never requires committing a real key.
+
+## Repository Hygiene
+
+Ignored by design:
+
+- `data/`
+- `outputs/`
+- `logs/`
+- `runs/`
+- checkpoints and safetensors
+- `.env` and `.env.*`
+
+Before pushing changes, run:
 
 ```bash
-q3o-train convert --datasets configs/datasets/datasets.yaml --job grpo
+python -m compileall src scripts
+PYTHONPATH=src python -m qwen3omni_train.cli launch --recipe configs/recipes/grpo.yaml --dry-run
+rg -n --hidden -S "api_key:|BEGIN .*PRIVATE|password|secret|token" .
 ```
 
-GSPO：
-
-```bash
-q3o-train convert --datasets configs/datasets/datasets.yaml --job gspo
-```
-
-输出格式模板见：
-
-- `schemas/ms_swift_sft.schema.json`
-- `schemas/ms_swift_grpo.schema.json`
-- `schemas/ms_swift_gspo.schema.json`
-- `examples/jsonl/*.jsonl`
-
-## 三个训练入口
-
-这三个脚本只是薄包装，真实参数仍来自 YAML：
-
-```bash
-python scripts/train_lora_sft.py --dry-run
-python scripts/train_grpo.py --dry-run
-python scripts/train_gspo.py --dry-run
-```
-
-## 核心原则
-
-- Git 仓库只存 `loader`、`converter`、`recipe`、`manifest`、`reward`、训练入口。
-- 大数据只通过 YAML 指向外部路径。
-- 模型权重只通过 YAML 指向外部路径。
-- 输出默认写到 `Train/outputs/`，该目录应保持未纳入版本控制。
-- LoRA SFT/GRPO/GSPO 都只训练 adapter；原始基座权重不被改写。
+Do not start training, data preprocessing, or benchmarks on a login node.

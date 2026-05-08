@@ -7,6 +7,16 @@ build/
 dist/
 outputs/
 data/
+logs/
+runs/
 manifests/*.jsonl
 !manifests/*.example.jsonl
 *.log
+*.out
+*.err
+*.pid
+*.safetensors
+checkpoint-*/
+.env
+.env.*
+!.env.example

@@ -1,0 +1,28 @@
+provider: xiaomi_mimo
+
+model:
+  key: xiaomi_mimo_v2_5
+  family: xiaomi_mimo
+  model_id: mimo-v2.5
+
+api:
+  base_url: https://token-plan-cn.xiaomimimo.com/v1
+  api_key_env: XIAOMI_MIMO_API_KEY
+  model: mimo-v2.5
+  timeout_sec: 120
+  max_retries: 2
+  retry_sleep_sec: 2
+  trust_env: true
+  auth_header: api-key
+  auth_scheme: ""
+
+request:
+  endpoint: /chat/completions
+  max_tokens_arg: max_completion_tokens
+  extra_body:
+    thinking:
+      type: disabled
+
+generation_defaults:
+  temperature: 0.0
+  top_p: 1.0

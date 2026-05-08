@@ -1,7 +1,7 @@
 model:
   key: qwen3_omni_30b_a3b_instruct
   official_model_id: Qwen/Qwen3-Omni-30B-A3B-Instruct
-  path: /public/home/202492301216/Workplace/Qwen3omni_project/Qwen3omni/models/Qwen3-Omni-30B-A3B-Instruct
+  path: ${QWEN3OMNI_MODEL_PATH:-Qwen/Qwen3-Omni-30B-A3B-Instruct}
   model_type: qwen3_omni_moe
   torch_dtype: bfloat16
 
